@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 class EditorReaction:
     """Хук для обработки нажатий кнопок в редакторе."""
     
-    WEBHOOK_PORT = 8081  # Тот же порт что и у preview
+    WEBHOOK_PORT = 8082
     
     def __init__(self):
         self.bot_token = os.getenv('EDITOR_API')  # Токен для бота редактора
