@@ -1,11 +1,12 @@
-# app.py (для preview-reaction хука)
+# app.py
 import asyncio
 import logging
 import signal
 from typing import Dict, Any
 
-# Импортируем только хук
+# Импортируем все хуки
 from hooks.preview_reaction import PreviewReaction
+from hooks.editor_reaction import EditorReaction
 
 # Настраиваем логирование
 logging.basicConfig(
@@ -13,22 +14,26 @@ logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
 
-# === ТОЛЬКО ОДИН ХУК ===
-ENABLE_PREVIEW_REACTION = True
+# === НАСТРОЙКА ХУКОВ ===
+ENABLE_PREVIEW_REACTION = True   # Хук для preview бота
+ENABLE_EDITOR_REACTION = True    # Хук для editor бота
 # ========================
 
 class ServiceManager:
-    """Менеджер для управления хуком."""
+    """Менеджер для управления хуками."""
     
     def __init__(self):
         self.tasks = []
         self.is_running = True
         
-        # Инициализируем только хук
+        # Инициализируем хуки
         self.services: Dict[str, Any] = {}
         
         if ENABLE_PREVIEW_REACTION:
             self.services["preview_reaction"] = PreviewReaction()
+        
+        if ENABLE_EDITOR_REACTION:
+            self.services["editor_reaction"] = EditorReaction()
         
         # Обработка сигналов остановки
         signal.signal(signal.SIGINT, self._signal_handler)
@@ -41,22 +46,23 @@ class ServiceManager:
 
     async def initialize_services(self):
         """Инициализация перед запуском."""
-        # Тут ничего не нужно, но метод должен быть
         return True
 
     async def start_background_services(self):
-        """Запускает хук."""
+        """Запускает все хуки."""
         services_tasks = []
         
-        # Запускаем только хук
         if ENABLE_PREVIEW_REACTION and "preview_reaction" in self.services:
             services_tasks.append(("Preview-Reaction", self._run_preview_reaction))
         
+        if ENABLE_EDITOR_REACTION and "editor_reaction" in self.services:
+            services_tasks.append(("Editor-Reaction", self._run_editor_reaction))
+        
         if not services_tasks:
-            logging.warning("⚠️ Хук не активен.")
+            logging.warning("⚠️ Нет активных хуков.")
             return False
         
-        logging.info("🎯 Запуск хука...")
+        logging.info("🎯 Запуск хуков...")
         for name, service_task in services_tasks:
             task = asyncio.create_task(service_task(name))
             self.tasks.append(task)
@@ -74,8 +80,18 @@ class ServiceManager:
         except Exception as e:
             logging.error(f"❌ Ошибка в {name}: {e}")
 
+    async def _run_editor_reaction(self, name: str):
+        """Запускает Editor Reaction хук."""
+        try:
+            logging.info(f"🚀 Запуск {name}...")
+            await self.services["editor_reaction"].run_monitoring()
+        except asyncio.CancelledError:
+            logging.info(f"{name} остановлен")
+        except Exception as e:
+            logging.error(f"❌ Ошибка в {name}: {e}")
+
     async def stop_services(self):
-        """Останавливает хук."""
+        """Останавливает все хуки."""
         logging.info("🛑 Остановка...")
         
         for task in self.tasks:
@@ -95,13 +111,14 @@ class ServiceManager:
                 logging.critical("❌ Ошибка инициализации")
                 return
             
-            logging.info("📋 Статус:")
+            logging.info("📋 Статус хуков:")
             logging.info(f"    Preview Reaction: {'✅ ВКЛЮЧЕН' if ENABLE_PREVIEW_REACTION else '❌ ВЫКЛЮЧЕН'}")
+            logging.info(f"    Editor Reaction: {'✅ ВКЛЮЧЕН' if ENABLE_EDITOR_REACTION else '❌ ВЫКЛЮЧЕН'}")
             
             has_services = await self.start_background_services()
             
             if has_services:
-                logging.info("🏃 Хук работает...")
+                logging.info("🏃 Хуки работают...")
                 while self.is_running:
                     await asyncio.sleep(1)
             else:
@@ -121,10 +138,11 @@ async def main_services():
     await manager.run()
 
 def start_application():
-    logging.info("🚀 Запуск Preview Reaction Hook...")
+    logging.info("🚀 Запуск Reaction Hooks...")
     logging.info("=" * 60)
     logging.info("📋 Настройки:")
     logging.info(f"    Preview Reaction: {'✅ ВКЛЮЧЕН' if ENABLE_PREVIEW_REACTION else '❌ ВЫКЛЮЧЕН'}")
+    logging.info(f"    Editor Reaction: {'✅ ВКЛЮЧЕН' if ENABLE_EDITOR_REACTION else '❌ ВЫКЛЮЧЕН'}")
     logging.info("=" * 60)
     
     try:
