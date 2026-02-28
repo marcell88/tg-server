@@ -42,6 +42,9 @@ class PreviewReaction:
                 elif callback_data.startswith("btn_post_"):
                     url = "https://n8n-tg-marcell88.amvera.io/webhook/81fc81a9-3208-462a-a858-bc27c0460fdf"
                     button_name = "Пост"
+                elif callback_data.startswith("btn_publish_"):
+                    url = "https://n8n-tg-marcell88.amvera.io/webhook/08e584c7-fadb-4207-a4c1-62363717081a"
+                    button_name = "Публикация"
                 else:
                     return web.json_response({"ok": False})
                 
